@@ -2,9 +2,10 @@ require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const { OpenAI } = require('openai');
 
-// 1. Initialize Bot & AI Clients
+// 1. Initialize Bot & AI Clients (OpenRouter Setup)
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const openai = new OpenAI({
+    baseURL: "https://openrouter.ai/api/v1", // <-- Naya rasta OpenRouter ke liye
     apiKey: process.env.OPENAI_API_KEY,
 });
 
@@ -13,7 +14,7 @@ bot.start((ctx) => {
     ctx.reply('Hello! Main ek AI Assistant hoon. Aap apna sawaal puch sakte hain.');
 });
 
-// 3. The Main Logic: Catching text and sending to OpenAI
+// 3. The Main Logic: Catching text and sending to AI
 bot.on('text', async (ctx) => {
     const userMessage = ctx.message.text;
 
@@ -21,9 +22,9 @@ bot.on('text', async (ctx) => {
         // User ko dikhne ke liye ki bot type kar raha hai
         await ctx.sendChatAction('typing');
 
-        // OpenAI ko prompt bhejna
+        // OpenRouter (Gemini Free) ko prompt bhejna
         const aiResponse = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo", // Ya gpt-4o-mini fast aur saste results ke liye
+            model: "google/gemini-2.0-flash:free", // <-- Free fast model yahan set hai
             messages: [{ role: "user", content: userMessage }],
         });
 
@@ -45,6 +46,8 @@ bot.launch().then(() => {
 // Graceful stop settings
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+
+// 5. Express Server for Render Web Service
 const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
