@@ -22,7 +22,7 @@ bot.on('text', async (ctx) => {
     try {
         await ctx.sendChatAction('typing');
         const aiResponse = await openai.chat.completions.create({
-            model: "meta-llama/llama-3.1-8b-instruct:free", // Hamesha chalne wala free model
+            model: "qwen/qwen-2-7b-instruct:free", // Hamesha chalne wala free model
             messages: [{ role: "user", content: ctx.message.text }],
         });
         await ctx.reply(aiResponse.choices[0].message.content);
