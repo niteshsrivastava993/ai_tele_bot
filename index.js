@@ -2,65 +2,40 @@ require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const { OpenAI } = require('openai');
 
-// 1. Initialize Bot & AI Clients (OpenRouter Setup)
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const openai = new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
     apiKey: process.env.OPENAI_API_KEY,
-    defaultHeaders: {
-        "HTTP-Referer": "http://localhost:3000", // OpenRouter ko ye headers chahiye hote hain
-        "X-Title": "Telegram AI Bot",
-    }
 });
 
-// 2. Welcome Message Setup
-bot.start((ctx) => {
-    ctx.reply('Hello! Main ek AI Assistant hoon. Aap apna sawaal puch sakte hain.');
-});
+bot.start((ctx) => ctx.reply('Hello! Main live hoon. Puchiye apna sawaal!'));
 
-// 3. The Main Logic: Catching text and sending to AI
 bot.on('text', async (ctx) => {
+    console.log(`📩 Message received: ${ctx.message.text}`); // Ye logs mein dikhega
     const userMessage = ctx.message.text;
 
     try {
-        // User ko dikhne ke liye ki bot type kar raha hai
         await ctx.sendChatAction('typing');
 
-        // OpenRouter (Mistral Free) ko prompt bhejna
         const aiResponse = await openai.chat.completions.create({
-            model: "mistralai/mistral-7b-instruct:free", // Stable Free Model
+            model: "google/gemini-2.0-flash:free", 
             messages: [{ role: "user", content: userMessage }],
         });
 
-        // AI ka reply extract karke Telegram par wapas bhejna
         const replyText = aiResponse.choices[0].message.content;
-        ctx.reply(replyText);
+        await ctx.reply(replyText);
+        console.log("✅ Reply sent successfully!");
 
     } catch (error) {
-        // Asli error logs mein dekhne ke liye
-        console.error('Detailed API Error:', error.response ? error.response.data : error.message);
-        ctx.reply('Sorry, thodi technical problem aa gayi hai. Kuch der baad try karein.');
+        console.error('❌ API Error Details:', error.message);
+        ctx.reply('Thoda load zyada hai, 10 second baad dobara message bhejein.');
     }
 });
 
-// 4. Start the Bot
-bot.launch().then(() => {
-    console.log('🤖 Bot is up and running in the background!');
-});
+bot.launch().then(() => console.log('🚀 BOT CONNECTED TO TELEGRAM!'));
 
-// Graceful stop settings
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
-
-// 5. Express Server for Render Web Service
+// Render Health Check
 const express = require('express');
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.get('/', (req, res) => {
-    res.send('🤖 AI Bot Server is Alive and Running!');
-});
-
-app.listen(PORT, () => {
-    console.log(`Web server is running on port ${PORT}`);
-});
+app.get('/', (req, res) => res.send('Bot is Alive!'));
+app.listen(process.env.PORT || 3000);
