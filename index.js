@@ -2,55 +2,61 @@ require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const express = require('express');
 
-const app = express();
-app.get('/', (req, res) => res.send('Bot Zinda Hai!'));
-app.listen(process.env.PORT || 3000, '0.0.0.0', () => console.log(`Server started.`));
-
 const bot = new Telegraf(process.env.BOT_TOKEN);
+const app = express();
 
-bot.on('message', async (ctx) => {
-    console.log(`🚨 KUCH AAYA TELEGRAM SE:`, ctx.message.text);
-    if (!ctx.message.text) return; 
+// Tumhara exact Render URL
+const RENDER_URL = "https://ai-tele-bot-503x.onrender.com";
+const WEBHOOK_PATH = `/bot${process.env.BOT_TOKEN}`;
 
+// Webhook setup (Ye 409 Conflict ko hamesha ke liye maar dega)
+app.use(bot.webhookCallback(WEBHOOK_PATH));
+
+app.get('/', (req, res) => res.send('Bot Webhook ke saath 100% Active Hai!'));
+
+// Native Gemini AI Function (No 3rd party package, No 404 Error)
+async function getGeminiReply(text) {
     try {
-        await ctx.sendChatAction('typing');
-        
-        // Direct Google Gemini ko request (No OpenAI package needed!)
-        const apiKey = process.env.OPENAI_API_KEY; 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-        
-        const response = await fetch(url, {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.OPENAI_API_KEY}`;
+        const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: ctx.message.text }] }]
-            })
+            body: JSON.stringify({ contents: [{ parts: [{ text: text }] }] })
         });
+        const data = await res.json();
+        if (data.error) return "❌ Google API Key mein error hai: " + data.error.message;
+        return data.candidates[0].content.parts[0].text;
+    } catch (e) {
+        return "❌ Network issue aa gaya AI se baat karne mein.";
+    }
+}
 
-        const data = await response.json();
+// Jab bhi koi text aayega, bot ye karega
+bot.on('text', async (ctx) => {
+    try {
+        // 1. Sabse pehle instant reply taaki tumhe pata chale bot zinda hai
+        const waitMessage = await ctx.reply("⏳ Ruko, soch raha hu...");
         
-        // Agar Google ki taraf se koi error aaya toh logs mein chhap jayega
-        if (data.error) {
-            console.error('❌ Google API Error:', data.error.message);
-            return ctx.reply('API key mein kuch issue hai, logs check karo.');
-        }
-
-        const replyText = data.candidates[0].content.parts[0].text;
-        await ctx.reply(replyText);
-        console.log('✅ Reply Sent Successfully!');
-
+        // 2. Phir AI se reply mangega
+        const aiReply = await getGeminiReply(ctx.message.text);
+        
+        // 3. Purana message delete karke AI ka reply dega
+        await ctx.telegram.deleteMessage(ctx.chat.id, waitMessage.message_id);
+        await ctx.reply(aiReply);
+        
     } catch (error) {
-        console.error('❌ Code Error:', error.message);
-        ctx.reply('Main sun raha hu, par network error aa gaya.');
+        console.error("Bot Error:", error);
     }
 });
 
-bot.launch({ dropPendingUpdates: true }).then(() => {
-    console.log('🚀 BOT FULLY CONNECTED!');
-}).catch(err => {
-    // Ye error purane ghost ki wajah se aayega, isko ignore karna hai
-    console.log("⏳ 409 Ghost Error (Isko ignore karo, purana server 1 min mein band ho jayega):", err.message);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, async () => {
+    console.log(`🚀 SERVER CHAL PADA PORT ${PORT} PAR`);
+    try {
+        // Start hote hi Telegram ko Webhook bata dega (Drop pending updates ke saath)
+        await bot.telegram.setWebhook(`${RENDER_URL}${WEBHOOK_PATH}`, { drop_pending_updates: true });
+        console.log('✅ WEBHOOK SET SUCCESSFUL! (Ab kabhi 409 nahi aayega)');
+    } catch (e) {
+        console.log('❌ Webhook Set Error:', e.message);
+    }
 });
-
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
