@@ -5,8 +5,12 @@ const { OpenAI } = require('openai');
 // 1. Initialize Bot & AI Clients (OpenRouter Setup)
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const openai = new OpenAI({
-    baseURL: "https://openrouter.ai/api/v1", // <-- Naya rasta OpenRouter ke liye
+    baseURL: "https://openrouter.ai/api/v1",
     apiKey: process.env.OPENAI_API_KEY,
+    defaultHeaders: {
+        "HTTP-Referer": "http://localhost:3000", // OpenRouter ko ye headers chahiye hote hain
+        "X-Title": "Telegram AI Bot",
+    }
 });
 
 // 2. Welcome Message Setup
@@ -22,9 +26,9 @@ bot.on('text', async (ctx) => {
         // User ko dikhne ke liye ki bot type kar raha hai
         await ctx.sendChatAction('typing');
 
-        // OpenRouter (Gemini Free) ko prompt bhejna
+        // OpenRouter (Mistral Free) ko prompt bhejna
         const aiResponse = await openai.chat.completions.create({
-            model: "google/gemini-2.0-flash:free", // <-- Free fast model yahan set hai
+            model: "mistralai/mistral-7b-instruct:free", // Stable Free Model
             messages: [{ role: "user", content: userMessage }],
         });
 
@@ -33,7 +37,8 @@ bot.on('text', async (ctx) => {
         ctx.reply(replyText);
 
     } catch (error) {
-        console.error('API Error:', error);
+        // Asli error logs mein dekhne ke liye
+        console.error('Detailed API Error:', error.response ? error.response.data : error.message);
         ctx.reply('Sorry, thodi technical problem aa gayi hai. Kuch der baad try karein.');
     }
 });
