@@ -23,7 +23,7 @@ bot.on('text', async (ctx) => {
     try {
         await ctx.sendChatAction('typing');
         const aiResponse = await openai.chat.completions.create({
-            model: "google/gemini-1.5-flash:free", 
+            model: "google/gemma-2-9b-it:free", 
             messages: [{ role: "user", content: ctx.message.text }],
         });
         await ctx.reply(aiResponse.choices[0].message.content);
