@@ -22,7 +22,7 @@ bot.on('message', async (ctx) => {
     try {
         await ctx.sendChatAction('typing');
         const aiResponse = await openai.chat.completions.create({
-            model: "google/gemini-2.0-flash-lite-preview-02-05:free", 
+            model: "deepseek/deepseek-r1:free", 
             messages: [{ role: "user", content: ctx.message.text }],
         });
         await ctx.reply(aiResponse.choices[0].message.content);
