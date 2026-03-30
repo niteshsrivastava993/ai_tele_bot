@@ -17,8 +17,7 @@ app.get('/', (req, res) => res.send('Bot Webhook ke saath 100% Active Hai!'));
 // Native Gemini AI Function (No 3rd party package, No 404 Error)
 async function getGeminiReply(text) {
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.OPENAI_API_KEY}`;
-        const res = await fetch(url, {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.OPENAI_API_KEY}`;        const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: text }] }] })
