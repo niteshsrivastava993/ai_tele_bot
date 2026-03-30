@@ -5,44 +5,40 @@ const express = require('express');
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const app = express();
 
-// Tumhara exact Render URL
-const RENDER_URL = "process.env.RENDER_EXTERNAL_URL;";
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL; 
 const WEBHOOK_PATH = `/bot${process.env.BOT_TOKEN}`;
 
-// Webhook setup (Ye 409 Conflict ko hamesha ke liye maar dega)
 app.use(bot.webhookCallback(WEBHOOK_PATH));
+app.get('/', (req, res) => res.send('Bot Groq AI ke saath Zinda Hai!'));
 
-app.get('/', (req, res) => res.send('Bot Webhook ke saath 100% Active Hai!'));
-
-// Native Gemini AI Function (No 3rd party package, No 404 Error)
-async function getGeminiReply(text) {
+// Google gaya bhaad mein, ab hum direct fast Groq API use karenge
+async function getGroqReply(text) {
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.OPENAI_API_KEY}`;        const res = await fetch(url, {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: text }] }] })
+            headers: {
+                'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: "llama3-8b-8192", // Llama 3 ka superfast free model
+                messages: [{ role: "user", content: text }]
+            })
         });
         const data = await res.json();
-        if (data.error) return "❌ Google API Key mein error hai: " + data.error.message;
-        return data.candidates[0].content.parts[0].text;
+        if (data.error) return "❌ Groq API Error: " + data.error.message;
+        return data.choices[0].message.content;
     } catch (e) {
         return "❌ Network issue aa gaya AI se baat karne mein.";
     }
 }
 
-// Jab bhi koi text aayega, bot ye karega
 bot.on('text', async (ctx) => {
     try {
-        // 1. Sabse pehle instant reply taaki tumhe pata chale bot zinda hai
         const waitMessage = await ctx.reply("⏳ Ruko, soch raha hu...");
-        
-        // 2. Phir AI se reply mangega
-        const aiReply = await getGeminiReply(ctx.message.text);
-        
-        // 3. Purana message delete karke AI ka reply dega
+        const aiReply = await getGroqReply(ctx.message.text);
         await ctx.telegram.deleteMessage(ctx.chat.id, waitMessage.message_id);
         await ctx.reply(aiReply);
-        
     } catch (error) {
         console.error("Bot Error:", error);
     }
@@ -51,11 +47,12 @@ bot.on('text', async (ctx) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
     console.log(`🚀 SERVER CHAL PADA PORT ${PORT} PAR`);
-    try {
-        // Start hote hi Telegram ko Webhook bata dega (Drop pending updates ke saath)
-        await bot.telegram.setWebhook(`${RENDER_URL}${WEBHOOK_PATH}`, { drop_pending_updates: true });
-        console.log('✅ WEBHOOK SET SUCCESSFUL! (Ab kabhi 409 nahi aayega)');
-    } catch (e) {
-        console.log('❌ Webhook Set Error:', e.message);
+    if (RENDER_URL) {
+        try {
+            await bot.telegram.setWebhook(`${RENDER_URL}${WEBHOOK_PATH}`, { drop_pending_updates: true });
+            console.log('✅ WEBHOOK SET SUCCESSFUL!');
+        } catch (e) {
+            console.log('❌ Webhook Error:', e.message);
+        }
     }
 });
