@@ -9,10 +9,27 @@ const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
 const WEBHOOK_PATH = `/bot${process.env.BOT_TOKEN}`;
 
 app.use(bot.webhookCallback(WEBHOOK_PATH));
-app.get('/', (req, res) => res.send('Bot Groq AI ke saath Zinda Hai!'));
+app.get('/', (req, res) => res.send('Nitesh Portfolio Bot is Live!'));
 
-// Google gaya bhaad mein, ab hum direct fast Groq API use karenge
-async function getGroqReply(text) {
+// 🧠 BOT KI MEMORY (Yaaddasht)
+const userMemory = {};
+
+async function getGroqReply(chatId, text) {
+    // Agar user pehli baar message kar raha hai, toh uski memory profile banao
+    if (!userMemory[chatId]) {
+        userMemory[chatId] = [
+            { role: "system", content: "You are a highly intelligent and professional AI assistant. You were created by Nitesh, an expert Full-Stack Developer. Answer concisely and politely." }
+        ];
+    }
+
+    // User ka naya message memory mein daalo
+    userMemory[chatId].push({ role: "user", content: text });
+
+    // Memory limit: Puraani baatein delete karo taaki token limit cross na ho (Last 10 messages yaad rakhega)
+    if (userMemory[chatId].length > 11) {
+        userMemory[chatId] = [userMemory[chatId][0], ...userMemory[chatId].slice(-10)];
+    }
+
     try {
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: 'POST',
@@ -21,22 +38,41 @@ async function getGroqReply(text) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: "llama-3.3-70b-versatile", // Llama 3 ka superfast free model
-                messages: [{ role: "user", content: text }]
+                model: "llama-3.3-70b-versatile",
+                messages: userMemory[chatId]
             })
         });
         const data = await res.json();
         if (data.error) return "❌ Groq API Error: " + data.error.message;
-        return data.choices[0].message.content;
+        
+        const aiReply = data.choices[0].message.content;
+        
+        // AI ka reply bhi memory mein save karo
+        userMemory[chatId].push({ role: "assistant", content: aiReply });
+
+        return aiReply;
     } catch (e) {
         return "❌ Network issue aa gaya AI se baat karne mein.";
     }
 }
 
+// 🎯 THE PORTFOLIO MESSAGE (Client sabse pehle ye dekhega)
+bot.start((ctx) => {
+    const welcomeMsg = `🚀 *Welcome to the AI Bot Demo!*\n\nI am a lightning-fast, intelligent AI assistant powered by Llama-3.3.\n\n👨‍💻 *Created by:* Nitesh (Full-Stack Developer)\n💼 *Looking for a custom bot for your business, Discord, or Crypto community?* DM my creator to get one built in 24 hours!\n\n_Send me any message to test my speed and memory._`;
+    ctx.replyWithMarkdown(welcomeMsg);
+});
+
+// 🧹 MEMORY CLEAR COMMAND
+bot.command('clear', (ctx) => {
+    userMemory[ctx.chat.id] = null; // Memory delete
+    ctx.reply("🧹 Meri memory clear ho chuki hai. Chalo nayi baat shuru karte hain!");
+});
+
+// NORMAL TEXT HANDLING
 bot.on('text', async (ctx) => {
     try {
         const waitMessage = await ctx.reply("⏳ Ruko, soch raha hu...");
-        const aiReply = await getGroqReply(ctx.message.text);
+        const aiReply = await getGroqReply(ctx.chat.id, ctx.message.text);
         await ctx.telegram.deleteMessage(ctx.chat.id, waitMessage.message_id);
         await ctx.reply(aiReply);
     } catch (error) {
