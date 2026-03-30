@@ -6,7 +6,7 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 const app = express();
 
 // Tumhara exact Render URL
-const RENDER_URL = "https://ai-tele-bot-503x.onrender.com";
+const RENDER_URL = "process.env.RENDER_EXTERNAL_URL;";
 const WEBHOOK_PATH = `/bot${process.env.BOT_TOKEN}`;
 
 // Webhook setup (Ye 409 Conflict ko hamesha ke liye maar dega)
