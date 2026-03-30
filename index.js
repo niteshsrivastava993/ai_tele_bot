@@ -21,7 +21,7 @@ async function getGroqReply(text) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: "llama3-8b-8192", // Llama 3 ka superfast free model
+                model: "llama-3.3-70b-versatile", // Llama 3 ka superfast free model
                 messages: [{ role: "user", content: text }]
             })
         });
